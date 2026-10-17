@@ -1,5 +1,9 @@
 # AC8 Integrated Mod — v2.5.1
 
+> **Fork note (AC8MouseAim standalone)**
+> For newly added aircraft whose size differs greatly from the original (for example AERIAL UAV TRANSPORT 'LADON'), if the camera position looks wrong in use, press **F3** to switch back to the original camera setting.
+> Installation and notes for the standalone build are in [`standalone/`](standalone/README.en.md).
+
 Stable release. **Offline single-player only; do not use online or in multiplayer.**
 
 **2.5.1:** a Windows setup program with one-click updates from GitHub, self-checks and repair, and a Steam launch option that never needs changing again; WAR is now the default flight control (F4 switches to PEACE). Other UE4SS mods can be used alongside (add a zip or folder in the launcher), a "save flight records" switch in the launcher (off by default), and sessions no longer copy the DLLs. **2.4.2:** fixes the keyboard-takeover lag in WAR. Since 2.4.1 the nose reference gun cross can be switched with **Alt+F7**.
