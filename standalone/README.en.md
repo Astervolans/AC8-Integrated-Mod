@@ -3,6 +3,10 @@
 > ### ⚠️ Camera note
 > **For newly added aircraft whose size differs greatly from the original (for example AERIAL UAV TRANSPORT 'LADON'), if the camera position looks wrong in use, press `F3` to switch back to the original camera setting.**
 
+> ### 🧪 Tested scope
+> This standalone build has **only been tested on [ACE8 Mod Launcher & Loader V 2.0.0](https://www.nexusmods.com/acecombat8wingsoftheve/mods/64)**.
+> Any other setup — for example a **manual UE4SS installation**, a different launcher/loader combination, or a different UE4SS build — is **untested and not guaranteed to work**.
+
 A **single UE4SS mod separated out of** [AC8 Integrated Mod](https://github.com/CreeperUX/AC8-Integrated-Mod) v2.5.1: mouse flight control, cameras and HMD helmet aiming.
 
 **Offline single-player only. Do not use online or in multiplayer.**
@@ -14,10 +18,10 @@ A **single UE4SS mod separated out of** [AC8 Integrated Mod](https://github.com/
 
 ## 1. What it is
 
-The integrated package bundles an installer, a launcher, a session console, per-launch deployment, exit cleanup and save backups. This folder keeps only the mod itself, so it can be:
+The integrated package bundles an installer, a launcher, a session console, per-launch deployment, exit cleanup and save backups. This folder keeps only the mod itself:
 
-- dropped into **ACE8 Mod Launcher 2.0.0** (recommended, section 3), or
-- copied into any game folder that already has UE4SS.
+- **drop it into [ACE8 Mod Launcher & Loader V 2.0.0](https://www.nexusmods.com/acecombat8wingsoftheve/mods/64) — the only environment this build has been tested on (section 3, option A);**
+- or copy it into a game folder that already has UE4SS (section 3, option B) — **that path has not been tested and is not guaranteed.**
 
 The two loading paths are independent — do not confuse them:
 
@@ -52,15 +56,20 @@ loadable by it nor in need of it.
 
 Download `AC8MouseAim-standalone-v2.5.1.zip` from [Releases](../../releases) and unpack the `AC8MouseAim\` folder.
 
-**Option A — ACE8 Mod Launcher 2.0.0 (recommended):** close the game and launcher, drop the
-`AC8MouseAim\` folder (or the whole zip) onto the launcher window, or use Mods → "Add mods…".
-The launcher recognises it as `AC8MouseAim (script mod)`, installs it into
-`ue4ss\Mods\AC8MouseAim` and writes `enabled.txt`. Then stay in **Modded** mode and press Play.
+**Option A — ACE8 Mod Launcher & Loader V 2.0.0 (✅ the only tested environment):**
+[nexusmods.com/acecombat8wingsoftheve/mods/64](https://www.nexusmods.com/acecombat8wingsoftheve/mods/64).
+Close the game and launcher, drop the `AC8MouseAim\` folder (or the whole zip) onto the launcher
+window, or use Mods → "Add mods…". The launcher recognises it as `AC8MouseAim (script mod)`,
+installs it into `ue4ss\Mods\AC8MouseAim` and writes `enabled.txt`. Then stay in **Modded** mode and
+press Play.
 
-**Option B — manual:** copy `AC8MouseAim\` to
+**Option B — manual (⚠️ untested, not guaranteed):** the steps below follow from how UE4SS works but
+have **not** been verified on a real install (for example a manual UE4SS setup or a different
+loader). Copy `AC8MouseAim\` to
 `<game root>\Game\Binaries\Win64\ue4ss\Mods\AC8MouseAim\` (game root = the folder containing
 `Game\Binaries\Win64\AceCombat8.exe`), make sure `AC8MouseAim\enabled.txt` exists (an empty file is
 enough), or add `AC8MouseAim : 1` to `ue4ss\Mods\mods.txt` if your UE4SS build only reads that.
+You are responsible for the requirements in section 2 — in particular the `UE4SS.dll` hash pin.
 
 An empty `enabled.txt` is how this UE4SS build enables a script mod; no `mods.txt` line is needed.
 

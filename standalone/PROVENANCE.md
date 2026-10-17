@@ -90,6 +90,10 @@
 
 **结论：任何环境变量方案在这个启动器下都不可能生效**，包括用户级 `setx`。所以把这个检查去掉。
 
+> **测试范围**：上面的实测**全部在 [ACE8 Mod Launcher & Loader V 2.0.0](https://www.nexusmods.com/acecombat8wingsoftheve/mods/64) 下进行**，
+> 也是本独立版唯一验证过的环境。其他安装方式（手动安装 UE4SS、其他启动器／加载器组合、不同 UE4SS 构建）
+> 未经验证，不保证有效。
+
 ### 4.2 具体改动：12 字节
 
 `offline_authorized()` 被内联进 `ac8_mouseaim_start`。全镜像**只有一处**调用

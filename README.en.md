@@ -2,6 +2,7 @@
 
 > **Fork note (AC8MouseAim standalone)**
 > For newly added aircraft whose size differs greatly from the original (for example AERIAL UAV TRANSPORT 'LADON'), if the camera position looks wrong in use, press **F3** to switch back to the original camera setting.
+> This standalone build has **only been tested on [ACE8 Mod Launcher & Loader V 2.0.0](https://www.nexusmods.com/acecombat8wingsoftheve/mods/64)**; any other setup (for example a manual UE4SS installation, or a different launcher/loader combination) is **untested and not guaranteed to work**.
 > Installation and notes for the standalone build are in [`standalone/`](standalone/README.en.md).
 
 Stable release. **Offline single-player only; do not use online or in multiplayer.**

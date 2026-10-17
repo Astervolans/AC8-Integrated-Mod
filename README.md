@@ -2,6 +2,7 @@
 
 > **Fork 说明（AC8MouseAim 独立版）**
 > 对于体积与原版机体相差较大的新增机体（如 AERIAL UAV TRANSPORT 'LADON'），如果在使用时遇到相机位置不正常，请按 **F3** 切换为原版相机设置。
+> 该独立版**仅在 [ACE8 Mod Launcher & Loader V 2.0.0](https://www.nexusmods.com/acecombat8wingsoftheve/mods/64) 上做过实测**；其他安装方式（例如手动安装 UE4SS、其他启动器／加载器组合）**未经验证，不保证有效**。
 > 独立版的安装、配置与原生模块说明见 [`standalone/`](standalone/README.md)。
 
 **正式版。仅限离线单人，禁止用于线上或多人游戏。**

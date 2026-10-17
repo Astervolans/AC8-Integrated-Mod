@@ -3,6 +3,10 @@
 > ### ⚠️ 相机提示
 > **对于体积与原版机体相差较大的新增机体（如 AERIAL UAV TRANSPORT 'LADON'），如果在使用时遇到相机位置不正常，请按 `F3` 切换为原版相机设置。**
 
+> ### 🧪 测试范围
+> 本独立版**仅在 [ACE8 Mod Launcher & Loader V 2.0.0](https://www.nexusmods.com/acecombat8wingsoftheve/mods/64) 上做过实测**。
+> 其他安装方式（例如**手动安装 UE4SS**、其他启动器／加载器组合、不同的 UE4SS 构建）**未经验证，不保证有效**。
+
 从 [AC8 Integrated Mod](https://github.com/CreeperUX/AC8-Integrated-Mod) v2.5.1 中分离出来的**单个 UE4SS mod**：鼠标飞控 + 摄像机 + HMD 头盔瞄准。
 
 **仅限离线单人。严禁用于线上或多人游戏。**
@@ -14,10 +18,10 @@
 
 ## 1. 这是什么
 
-整合包把安装器、启动器、会话控制台、逐次部署与退出清理、存档备份全部打包在一起。本目录只保留 mod 本身，可以：
+整合包把安装器、启动器、会话控制台、逐次部署与退出清理、存档备份全部打包在一起。本目录只保留 mod 本身：
 
-- 拖进 **ACE8 Mod Launcher 2.0.0**（推荐，见第 3 节）；
-- 或手工放进任何已装好 UE4SS 的游戏目录。
+- **拖进 [ACE8 Mod Launcher & Loader V 2.0.0](https://www.nexusmods.com/acecombat8wingsoftheve/mods/64)（唯一实测过的环境，见第 3 节方式 A）；**
+- 或手工放进已装好 UE4SS 的游戏目录（第 3 节方式 B）——**这条路没有实测过，不保证有效**。
 
 两条加载路径互不相干，**不要混淆**：
 
@@ -48,7 +52,9 @@ IoStoreLoaderMod 的源码里明确只认 `.utoc`（`source/src/loader.c:396`）
 
 先从 [Releases](../../releases) 下载 `AC8MouseAim-standalone-v2.5.1.zip`，解压得到 `AC8MouseAim\` 文件夹。
 
-### 方式 A：ACE8 Mod Launcher 2.0.0（推荐）
+### 方式 A：ACE8 Mod Launcher & Loader V 2.0.0（✅ 唯一实测过的环境）
+
+> [nexusmods.com/acecombat8wingsoftheve/mods/64](https://www.nexusmods.com/acecombat8wingsoftheve/mods/64)
 
 1. 关闭游戏与启动器。
 2. 把 `AC8MouseAim\` 文件夹（或整个 zip）拖到启动器窗口，或 Mods 页 → “Add mods…”。
@@ -57,14 +63,19 @@ IoStoreLoaderMod 的源码里明确只认 `.utoc`（`source/src/loader.c:396`）
 
 `enabled.txt`（空文件）就是这个 UE4SS 构建启用 script mod 的方式，不需要 `mods.txt` 里加行。
 
-### 方式 B：手工安装
+### 方式 B：手工安装（⚠️ 未实测，不保证有效）
+
+下面是按原理写出的步骤，**没有在实机上验证过**（例如手动安装 UE4SS、其他加载器组合）：
 
 1. 把 `AC8MouseAim\` 复制到
    `<游戏根目录>\Game\Binaries\Win64\ue4ss\Mods\AC8MouseAim\`
    （游戏根目录 = 含 `Game\Binaries\Win64\AceCombat8.exe` 的那一层）。
 2. 确认 `AC8MouseAim\enabled.txt` 存在（空文件即可）。若你的 UE4SS 只认 `mods.txt`，
    则在 `ue4ss\Mods\mods.txt` 里加一行 `AC8MouseAim : 1`。
-3. 用启动器 / 你惯用的方式以**关闭反作弊**的方式启动游戏。
+3. 用你惯用的方式以**关闭反作弊**的方式启动游戏。
+
+需要自行保证的前提见第 2 节（尤其是 `UE4SS.dll` 的哈希锁定）。若走这条路遇到问题，
+请把日志发出来，但**不要预期它已经过验证**。
 
 ---
 
