@@ -172,3 +172,83 @@ flight records`），保留原样以便继续按哈希复核，含义与替代�
 1. 仓库根 `README.md` 顶部增加了一段 fork 说明（相机 / F3 提示）；
 2. 新增 `standalone/` 目录（本独立版）；
 3. **没有**引入任何诊断脚本、测试脚手架或本机相关路径。
+
+## 7. 游戏更新到 1.01.002 后的移植
+
+### 7.1 症状与日志证据
+
+游戏从构建 25201480 更新到 **1.01.002** 后，同一次启动里出现：
+
+```
+native camera refused: executable identity/signature mismatch
+HMD unavailable: selection signature mismatch; stock selection retained
+```
+
+同时 HUD 计数器全为 0（`stage_try_hz=0.00`、`publish_try_hz=0.00`、`submitted=0`、`projected=0`）。
+相机姿态只在被 hook 的 `update_native_camera` 里应用（`native_camera.h:107-119`），hook 被拒 → 该段从不执行，
+游戏回到原生机位；而 HUD 的姿态由同一处 `publish_hud_frame()` 喂入，于是参考准星和光标也不再绘制。
+飞控不受影响（日志里 `FE_CONTROL mode=WAR`、三轴 `CAPTURE_ADAPTATION` 有真实数值）。
+
+这是模块**按设计工作**：它拒绝挂钩自己不认识的可执行文件（`docs/LIMITATIONS.md:3` 也写明“游戏更新后版本校验可能拒绝启动”）。
+
+### 7.2 变动范围（逐项实测）
+
+| 校验项 | 25201480 | 1.01.002 |
+|---|---|---|
+| PE TimeDateStamp | `0x6AA0E27D` | `0x6AD2D0A7` |
+| PE SizeOfImage | `0x2195A000` | `0x215A2000`（缩约 3.9 MB） |
+| 相机 update 序言 | `48 8B C4 48 89 58 18 …` | 位置改变 |
+| SelectTarget 入口 | `48 89 5C 24 18 55 57 …` | 位置改变 |
+
+镜像整体缩小、代码重新链接，因此**不存在“只绕过校验就能用”**：RVA 全变，硬挂钩子会写到无关代码。
+
+### 7.3 新常量的推导与独立验证
+
+`tools/port-to-101002.mjs` 用的每个值都不是猜的：
+
+| 常量 | 新值 | 验证方式 |
+|---|---|---|
+| TimeDateStamp | `0x6AD2D0A7` | 直接读新 exe 的 PE 头 |
+| SizeOfImage | `0x215A2000` | 同上 |
+| 相机 update 函数 | `0x070B4960` | 15 字节序言有 4 处匹配；**只有它被镜像中某个指针引用** |
+| 相机管理器 vtable | `0x0C9BCE20` | 该指针位于 `vtable+241*8`，反推得 vtable；交叉验证：8 字节对齐、前 8 项全为代码指针、第 241 项指回该函数 |
+| HMD SelectTarget | `0x07283700` | 21 字节入口特征**全文件唯一** |
+| HMD 返回地址 | `0x07D529E0` | 16 字节调用点**全文件唯一**，且 exe 内编码的调用位移等于 `select − return`（独立印证） |
+| 缓存 helper 字节位 | `0x048EF260` | 8 字节特征唯一 |
+| actor getter canary | `0x03FD739D` | **无法唯一确定**：`mov rax,[rcx+0x1A0]` 有 311 处。它只被 memcmp 引用、从不执行，因此指向另一处含相同指令的位置；其余四项校验保持精确，推导错了仍然会干净拒绝而不是误挂钩子 |
+
+`.rdata` 里找不到任何 vtable —— 这个游戏的段布局很特殊，相机管理器的 vtable 落在 `.tls` 段，
+必须做全文件扫描才能定位。
+
+### 7.4 一个值得记住的坑
+
+`install()` 里那段 16 字节 `memcmp` 被编译器**内联成两段 8 字节比较**，第二段的地址因此成为
+**另一个独立常量**（`caller + 8`，旧值 `0x07D630D4`）：
+
+```
+0x1CE10  48 8b 83 cc 30 d6 07   mov rax,[rbx+0x7D630CC]
+0x1CE1E  48 8b 83 d4 30 d6 07   mov rax,[rbx+0x7D630D4]   ← 只改第一段会漏掉这一处
+```
+
+只改第一段时，文件级模拟三条判定“全部通过”，运行时却仍报 `selection signature mismatch`。
+相机侧用的是真正的 `memcmp()` 调用（单一地址），因此没有这个问题——
+**这也正是当时“除 HMD 外全部正常”的原因**。
+
+为此工具末尾加了一道**残留常量终检**：只要文件里还留有任何一个旧常量的 32 位值就拒绝输出。
+这道检查正是针对这类“漏改一处”的失误。
+
+### 7.5 结果
+
+```
+官方 v2.5.1（25201480，门 2 关闭）  af02554981162ddcb2c87d95752a06c62a3065d95764578082c47c8aaeb2331d
+1.01.002 移植版（门 2 关闭）        632ca87f14d406da98206f2f45a5b24e47f1601d18b1bae566726bbdb45fa512
+```
+
+改动 47 字节，全部落在 16 个声明字段内；文件大小、PE 架构、22 个导出符号、6 个 UE4SS 导入符号均不变。
+
+**未改动**：`manager+0x14A0`（POV）、`manager+0x14D0`（FOV）、`pawn+0x1A0`（root）、`root+0x220`（位置）
+这四个结构体偏移。实测在 1.01.002 下仍然有效。若将来某次更新让它们失效，
+运行时会打出具名拒绝原因（`invalid live camera/aircraft data (vtable|root component|fov|actor position|pov)`），
+属于**安全失败**（不崩、只是相机不生效），可据此逐个重推。
+
+已实测：相机、拉远机位、参考准星、鼠标飞控、HMD 全部正常。

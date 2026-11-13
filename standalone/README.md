@@ -40,7 +40,7 @@ IoStoreLoaderMod 的源码里明确只认 `.utoc`（`source/src/loader.c:396`）
 
 | 条件 | 说明 |
 |---|---|
-| 游戏版本 | 构建 **25201480**（Steam AppID 2288340）。其它构建可能改变输入槽位布局。 |
+| 游戏版本 | Steam AppID 2288340。**两个构建各有对应的 DLL 与 release**：构建 **25201480** → `standalone-v2.5.1`；构建 **1.01.002** → `standalone-v2.5.1-game1.01.002`。其它构建需自行移植（第 8 节）。 |
 | UE4SS.dll | 必须是 **`680a026890abb4d0df2211251f8defc1681a584275f1521dcc0fe30af480006f`**（`UE4SS3.0.1-1152-ge3ba1016`，20,605,440 字节）。原生模块在 `native/src/lua_bridge.h` 里硬编码了这个 SHA-256，换任何其它版本都会被拒绝，日志写 `bridge refused: UE4SS runtime hash mismatch`。ACE8 Mod Launcher 装的正是这个构建。 |
 | VC++ 运行库 | Microsoft Visual C++ 2015-2022 **x64** Redistributable（原生模块导入 `MSVCP140.dll`、`VCRUNTIME140.dll`、`VCRUNTIME140_1.dll`）。 |
 
@@ -50,7 +50,12 @@ IoStoreLoaderMod 的源码里明确只认 `.utoc`（`source/src/loader.c:396`）
 
 ## 3. 安装
 
-先从 [Releases](../../releases) 下载 `AC8MouseAim-standalone-v2.5.1.zip`，解压得到 `AC8MouseAim\` 文件夹。
+先按你的游戏构建从 [Releases](../../releases) 下载对应的包，解压得到 `AC8MouseAim\` 文件夹：
+
+- 构建 **25201480** → `AC8MouseAim-standalone-v2.5.1.zip`
+- 构建 **1.01.002** → `AC8MouseAim-standalone-v2.5.1-game1.01.002.zip`
+
+**装错构建不会崩，但相机、准星和 HMD 会静默失效**（日志见第 7 节）。
 
 ### 方式 A：ACE8 Mod Launcher & Loader V 2.0.0（✅ 唯一实测过的环境）
 
@@ -81,7 +86,9 @@ IoStoreLoaderMod 的源码里明确只认 `.utoc`（`source/src/loader.c:396`）
 
 ## 4. 原生模块说明（重要边界）
 
-Releases 里的 `ac8_mouse_aim_010.dll` 相对官方版本只改了 **12 个字节**：
+Releases 里的 DLL 相对官方版本有两处改动，合计 **47 个字节**。
+
+### 4.1 关闭门 2：12 字节
 
 ```
 文件偏移 0x441af   0F 84 68 03 00 00  ->  90 90 90 90 90 90
@@ -90,16 +97,6 @@ Releases 里的 `ac8_mouse_aim_010.dll` 相对官方版本只改了 **12 个字�
 
 这两条是 `offline_authorized()` 内联后「环境变量不存在 / 不等于 `1` 就跳到拒绝分支」的条件跳转。
 改成 NOP 后永远走「已授权」路径，也就是不再要求 `EOS_USE_ANTICHEATCLIENTNULL`。
-
-**除此之外一切照旧**：`UE4SS.dll` 的 SHA-256 锁定（门 1）**原封不动**，22 个导出符号、
-从 `UE4SS.dll` 导入的 6 个 `LuaMadeSimple` 符号、文件大小与 PE 结构都没有变化。
-
-```
-官方版    f66a8cf8a298c535b123b9857a904f9ce9241c59e92f908a032c4cb15a1783cf
-门 2 关闭 af02554981162ddcb2c87d95752a06c62a3065d95764578082c47c8aaeb2331d
-```
-
-`tools/patch-offline-gate.mjs` 可以从官方 DLL 逐字节复现这个修改（自带校验，见第 8 节）。
 
 > **为什么需要它**：官方那道门要求 `EOS_USE_ANTICHEATCLIENTNULL=1`，而 ACE8 Mod Launcher
 > 用 `AceCombat8.exe -eac-nop-loaded -nosplash` 关反作弊、**不设置也不转发**这个变量
@@ -110,6 +107,25 @@ Releases 里的 `ac8_mouse_aim_010.dll` 相对官方版本只改了 **12 个字�
 > `dwmapi.dll`、`~mods`、`LogicMods` **整体移出游戏目录**，mod 根本不存在。
 > **但如果你把这份 DLL 用在别的安装方式里（例如手工装的裸 UE4SS），就失去了这层保护。**
 > 那种情况下请改回官方 DLL，或自行确保只在关闭反作弊时启动。
+
+### 4.2 构建移植：另外 35 字节（仅 1.01.002 那一版）
+
+官方模块把游戏构建的 `TimeDateStamp`、`SizeOfImage` 和一批代码地址硬编码在里面，
+所以游戏一更新它就拒绝挂钩（`native camera refused: executable identity/signature mismatch`）。
+`game1.01.002` 那一版把这些常量重新指向新构建，推导与逐项验证见
+[PROVENANCE.md 第 7 节](PROVENANCE.md)。**这一项只影响 1.01.002；25201480 那一版没有。**
+
+**除此之外一切照旧**：`UE4SS.dll` 的 SHA-256 锁定（门 1）**原封不动**，22 个导出符号、
+从 `UE4SS.dll` 导入的 6 个 `LuaMadeSimple` 符号、文件大小与 PE 结构都没有变化。
+
+```
+官方版                  f66a8cf8a298c535b123b9857a904f9ce9241c59e92f908a032c4cb15a1783cf
+门 2 关闭（25201480）    af02554981162ddcb2c87d95752a06c62a3065d95764578082c47c8aaeb2331d
+门 2 关闭 + 1.01.002    632ca87f14d406da98206f2f45a5b24e47f1601d18b1bae566726bbdb45fa512
+```
+
+`tools/patch-offline-gate.mjs` 与 `tools/port-to-101002.mjs` 可以分别逐字节复现这两项修改
+（都自带校验，见第 8 节）。
 
 ---
 
@@ -188,6 +204,9 @@ yaw_right=69        ; E
 | UE4SS 报无法加载 DLL | 缺 VC++ 运行库 | 装 x64 运行库 |
 | `UE4SS.log` 没有 `[AC8MouseAim] Loaded.` | `enabled.txt` 缺失或路径层级不对 | 确认 `…\ue4ss\Mods\AC8MouseAim\Scripts\main.lua` 存在 |
 | `Disabled: required game-thread callback unavailable.` | UE4SS 不是锁定构建 | 换成锁定构建 |
+| 日志 `native camera refused: executable identity/signature mismatch` | 游戏构建与 DLL 不匹配 | 装对应构建的 release；或按第 8 节移植 |
+| 日志 `HMD unavailable: selection signature mismatch` | 同上（HMD 特征码不匹配） | 同上 |
+| 相机变成原生机位、参考准星/光标消失 | 同上：相机 hook 未安装，HUD 拿不到姿态 | 同上 |
 | 飞控轴反向 | 游戏构建不同 | 调 `pitch_slot`/`roll_slot` 或 `*_sign` |
 | **新增机体相机位置不正常** | 机体尺寸与原版差异大 | **按 `F3` 切回原版相机设置** |
 
@@ -207,14 +226,19 @@ ue4ss\UE4SS.log                                     UE4SS 与 Lua 侧
 
 ```bash
 # 方式一：从官方发布包里取出 DLL，再用本仓库的工具打补丁（推荐，可校验）
-node tools/patch-offline-gate.mjs 官方.ac8_mouse_aim_010.dll 输出.dll
+node tools/patch-offline-gate.mjs 官方.ac8_mouse_aim_010.dll 输出.dll          # 仅关闭门 2
+node tools/port-to-101002.mjs    官方.ac8_mouse_aim_010.dll 输出.dll          # 门 2 + 1.01.002 移植
 
 # 方式二：从源码重编（需要 Visual Studio + x86/x64 C++ 工具链）
 cd native && build.cmd        # 产出 native/build/ac8_mouse_aim_010.dll（官方版）
 ```
 
-方式一会逐字节核对补丁位置，只有原文件确实是官方版（`f66a8cf8…`）时才会写出结果，
-否则直接报错退出。
+两个工具都会逐字节核对补丁位置：只有原文件确实是官方版（`f66a8cf8…`）时才写出结果，
+否则直接报错退出；`port-to-101002.mjs` 还会在写出前检查**没有任何旧常量残留**。
+
+**其它游戏构建**需要自行推导新常量。`port-to-101002.mjs` 的注释里写了每个值是怎么来的、
+如何验证（唯一特征、vtable 指针反推、调用位移自校验），以及一个必须知道的坑：
+16 字节 `memcmp` 会被内联成两段 8 字节比较，第二段地址是**独立常量**，只改第一段会漏。
 
 ---
 
@@ -234,6 +258,6 @@ mod 本身不写注册表、不装服务、不在游戏目录之外留任何东�
 - 上游整合与修改部分：MIT © 2026 CreeperUX，见仓库根 [LICENSE](../LICENSE)。
 - 原始项目：[FletcherMiya/AC8-Mouse-Aim](https://github.com/FletcherMiya/AC8-Mouse-Aim)。
 - UE4SS：MIT。MinHook、MouseFlight 与 HUD 字体许可见仓库根 [THIRD_PARTY_NOTICES.md](../THIRD_PARTY_NOTICES.md) 与 `licenses/`。
-- 分离过程、哈希核对与那 12 字节补丁的完整记录见 [PROVENANCE.md](PROVENANCE.md)。
+- 分离过程、哈希核对、12 字节补丁与 1.01.002 移植的完整记录见 [PROVENANCE.md](PROVENANCE.md)。
 
 [English](README.en.md)

@@ -41,7 +41,7 @@ loadable by it nor in need of it.
 
 | Requirement | Detail |
 |---|---|
-| Game version | Build **25201480** (Steam AppID 2288340). Other builds may change the input slot layout. |
+| Game version | Steam AppID 2288340. **Each build has its own DLL and its own release:** build **25201480** → `standalone-v2.5.1`; build **1.01.002** → `standalone-v2.5.1-game1.01.002`. Other builds need a port (section 8). |
 | UE4SS.dll | Must be **`680a026890abb4d0df2211251f8defc1681a584275f1521dcc0fe30af480006f`** (`UE4SS3.0.1-1152-ge3ba1016`, 20,605,440 bytes). The native module hard-codes that SHA-256 in `native/src/lua_bridge.h`; any other build is refused with `bridge refused: UE4SS runtime hash mismatch`. ACE8 Mod Launcher installs exactly this build. |
 | VC++ runtime | Microsoft Visual C++ 2015-2022 **x64** Redistributable (the DLL imports `MSVCP140.dll`, `VCRUNTIME140.dll`, `VCRUNTIME140_1.dll`). |
 
@@ -54,7 +54,14 @@ loadable by it nor in need of it.
 
 ## 3. Install
 
-Download `AC8MouseAim-standalone-v2.5.1.zip` from [Releases](../../releases) and unpack the `AC8MouseAim\` folder.
+Download the package that matches your game build from [Releases](../../releases) and unpack the
+`AC8MouseAim\` folder:
+
+- build **25201480** → `AC8MouseAim-standalone-v2.5.1.zip`
+- build **1.01.002** → `AC8MouseAim-standalone-v2.5.1-game1.01.002.zip`
+
+**Installing the wrong one does not crash anything, but the camera, the reticle and HMD go silent**
+(see the log lines in section 7).
 
 **Option A — ACE8 Mod Launcher & Loader V 2.0.0 (✅ the only tested environment):**
 [nexusmods.com/acecombat8wingsoftheve/mods/64](https://www.nexusmods.com/acecombat8wingsoftheve/mods/64).
@@ -77,7 +84,9 @@ An empty `enabled.txt` is how this UE4SS build enables a script mod; no `mods.tx
 
 ## 4. About the native module (important boundary)
 
-The `ac8_mouse_aim_010.dll` in Releases differs from the official one by exactly **12 bytes**:
+The DLL in Releases differs from the official one in two ways, **47 bytes in total**.
+
+### 4.1 Offline gate off — 12 bytes
 
 ```
 file offset 0x441af   0F 84 68 03 00 00  ->  90 90 90 90 90 90
@@ -86,17 +95,6 @@ file offset 0x441c7   0F 85 50 03 00 00  ->  90 90 90 90 90 90
 
 Those are the two conditional jumps of the inlined `offline_authorized()`. NOP-ing them makes
 execution always take the authorised path, so `EOS_USE_ANTICHEATCLIENTNULL` is no longer required.
-
-**Everything else is untouched:** the `UE4SS.dll` SHA-256 pin (gate 1) still applies, all 22 exports
-and the 6 `LuaMadeSimple` imports from `UE4SS.dll` are unchanged, and size and PE structure are identical.
-
-```
-official   f66a8cf8a298c535b123b9857a904f9ce9241c59e92f908a032c4cb15a1783cf
-gate off   af02554981162ddcb2c87d95752a06c62a3065d95764578082c47c8aaeb2331d
-```
-
-`tools/patch-offline-gate.mjs` reproduces this from the official DLL, byte for byte, and verifies
-the input first (section 8).
 
 > **Why it is needed:** the official gate demands `EOS_USE_ANTICHEATCLIENTNULL=1`, but ACE8 Mod
 > Launcher disables anti-cheat with `AceCombat8.exe -eac-nop-loaded -nosplash` and neither sets nor
@@ -109,6 +107,27 @@ the input first (section 8).
 > is not installed at all. **But in any other installation (for example a hand-made bare UE4SS
 > setup) that protection is gone.** Use the official DLL there, or make sure you only launch with
 > anti-cheat off.
+
+### 4.2 Build port — the other 35 bytes (only in the 1.01.002 release)
+
+The official module hard-codes the game build's `TimeDateStamp`, `SizeOfImage` and a set of code
+addresses, so a game update makes it refuse to hook
+(`native camera refused: executable identity/signature mismatch`). The `game1.01.002` build
+re-points those constants at the new executable; the derivation and the per-value verification are
+in [PROVENANCE.md section 7](PROVENANCE.md). **This part only affects 1.01.002 — the 25201480
+release does not have it.**
+
+**Everything else is untouched:** the `UE4SS.dll` SHA-256 pin (gate 1) still applies, all 22 exports
+and the 6 `LuaMadeSimple` imports from `UE4SS.dll` are unchanged, and size and PE structure are identical.
+
+```
+official                 f66a8cf8a298c535b123b9857a904f9ce9241c59e92f908a032c4cb15a1783cf
+gate off (25201480)      af02554981162ddcb2c87d95752a06c62a3065d95764578082c47c8aaeb2331d
+gate off + 1.01.002      632ca87f14d406da98206f2f45a5b24e47f1601d18b1bae566726bbdb45fa512
+```
+
+`tools/patch-offline-gate.mjs` and `tools/port-to-101002.mjs` reproduce these two changes
+respectively, byte for byte, each verifying its input first (section 8).
 
 ---
 
@@ -162,6 +181,9 @@ Keybinds live in the `[keybindings]` section as **Windows virtual-key codes**: `
 | UE4SS cannot load the DLL | VC++ runtime missing | Install the x64 redistributable |
 | No `[AC8MouseAim] Loaded.` in `UE4SS.log` | `enabled.txt` missing or wrong folder depth | Check `…\ue4ss\Mods\AC8MouseAim\Scripts\main.lua` exists |
 | `Disabled: required game-thread callback unavailable.` | Wrong UE4SS build | Use the pinned build |
+| `native camera refused: executable identity/signature mismatch` | Game build does not match the DLL | Install the release for your build, or port (section 8) |
+| `HMD unavailable: selection signature mismatch` | Same cause (HMD signatures) | Same |
+| Camera falls back to stock and the reticle/cursor disappears | Same cause: the camera hook is not installed, so the HUD gets no pose | Same |
 | Wrong axis responds | Different game build | Adjust `pitch_slot`/`roll_slot` or the `*_sign` values |
 | **Camera wrong on a newly added aircraft** | Airframe size differs a lot from the original | **Press `F3` to switch back to the original camera** |
 
@@ -172,15 +194,23 @@ Keybinds live in the `[keybindings]` section as **Windows virtual-key codes**: `
 The official DLL is not in this repository (`.gitignore` excludes `*.dll`). Two ways to get this build:
 
 ```bash
-# 1) take the DLL from the official release and apply this repo's tool (recommended, verified)
-node tools/patch-offline-gate.mjs official_ac8_mouse_aim_010.dll out.dll
+# 1) take the DLL from the official release and apply this repo's tools (recommended, verified)
+node tools/patch-offline-gate.mjs official_ac8_mouse_aim_010.dll out.dll    # gate off only
+node tools/port-to-101002.mjs    official_ac8_mouse_aim_010.dll out.dll    # gate off + 1.01.002 port
 
 # 2) rebuild from source (needs Visual Studio with the x86/x64 C++ toolchain)
 cd native && build.cmd        # produces native/build/ac8_mouse_aim_010.dll (official)
 ```
 
-Option 1 checks every patch site and refuses to write anything unless the input really is the
-official build (`f66a8cf8…`).
+Both tools check every patch site and refuse to write anything unless the input really is the
+official build (`f66a8cf8…`); `port-to-101002.mjs` additionally refuses if **any** stale old
+constant survives in the output.
+
+**Porting a different game build** means re-deriving the constants. The header comment of
+`port-to-101002.mjs` documents how each value was obtained and verified (unique signatures, the
+vtable-pointer back-derivation, the self-consistent call displacement), plus one trap worth
+knowing: a 16-byte `memcmp` is inlined as two 8-byte compares, and the second chunk carries its
+**own** address constant — patching only the first chunk silently misses.
 
 ---
 
@@ -198,7 +228,7 @@ the game folder.
 MIT © 2026 CreeperUX for the mod and the integration (see the repo root [LICENSE](../LICENSE)).
 Upstream project: [FletcherMiya/AC8-Mouse-Aim](https://github.com/FletcherMiya/AC8-Mouse-Aim).
 UE4SS is MIT; MinHook, MouseFlight and font licences are in [THIRD_PARTY_NOTICES.md](../THIRD_PARTY_NOTICES.md)
-and `licenses/`. The full record of the separation, the hash cross-checks and the 12-byte patch is
-in [PROVENANCE.md](PROVENANCE.md).
+and `licenses/`. The full record of the separation, the hash cross-checks, the 12-byte patch and the
+1.01.002 port is in [PROVENANCE.md](PROVENANCE.md).
 
 [中文](README.md)
